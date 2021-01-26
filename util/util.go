@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -32,6 +33,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -221,4 +223,26 @@ func GetUnusedPort() (int, error) {
 func GetProgramParentPath() string {
 	dir, _ := path.Split(GetProgramPath())
 	return dir
+}
+
+// 解析如果interface参数为auto，并且指定了local-ip 时，对应的网卡
+func autoInterface(ip string) (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, i := range interfaces {
+		if strings.Contains(i.Flags.String(), "up") {
+			addrs, err := i.Addrs()
+			if err == nil {
+				for _, addr := range addrs {
+					ipaddr := strings.Split(addr.String(), "/")[0]
+					if ip == ipaddr {
+						return i.Name, nil
+					}
+				}
+			}
+		}
+	}
+	return "", errors.New("not found interface dev")
 }
